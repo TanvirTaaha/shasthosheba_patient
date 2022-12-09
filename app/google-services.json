@@ -1,0 +1,85 @@
+{
+  "project_info": {
+    "project_number": "441651925791",
+    "firebase_url": "https://shasthosheba-fe3e1-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "shasthosheba-fe3e1",
+    "storage_bucket": "shasthosheba-fe3e1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:441651925791:android:bc3ea95d7cd0c741eb162a",
+        "android_client_info": {
+          "package_name": "com.shasthosheba.doctor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "441651925791-na27919v6evn3t04dsbsc47qonqd65tr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shasthosheba.doctor",
+            "certificate_hash": "888d590787ef221b242d6ae34db5e8bfbad25d04"
+          }
+        },
+        {
+          "client_id": "441651925791-b4rmt3kq2ilu2145954r18u2h1819ggm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCK63LL5vl6dykxNyMt0OmOAFubfl2ykc8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "441651925791-b4rmt3kq2ilu2145954r18u2h1819ggm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:441651925791:android:25ecc685c5191c78eb162a",
+        "android_client_info": {
+          "package_name": "com.shasthosheba.patient"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "441651925791-89q1vsslnao47j5ahmbhrgb4jblrnb20.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shasthosheba.patient",
+            "certificate_hash": "888d590787ef221b242d6ae34db5e8bfbad25d04"
+          }
+        },
+        {
+          "client_id": "441651925791-b4rmt3kq2ilu2145954r18u2h1819ggm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCK63LL5vl6dykxNyMt0OmOAFubfl2ykc8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "441651925791-b4rmt3kq2ilu2145954r18u2h1819ggm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

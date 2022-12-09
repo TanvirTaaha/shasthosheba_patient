@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <ImageView
+        android:id="@+id/iv_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/patient_background_low_opacity" />
+
+    <TextView
+        android:id="@+id/tv_patients_list_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_margin="16dp"
+        android:text="@string/patients"
+        android:textColor="@android:color/primary_text_light"
+        android:textSize="24sp" />
+
+    <ImageButton
+        android:id="@+id/ib_sign_out"
+        android:layout_width="24dp"
+        android:layout_height="24sp"
+        android:src="@drawable/ic_logout"
+        android:background="@null"
+        android:layout_margin="16dp"
+        android:scaleType="fitCenter"
+        android:layout_alignParentEnd="true"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rcv_patient_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/tv_patients_list_title"
+        android:layout_marginHorizontal="16dp"
+        tools:listitem="@layout/rcv_patient_item" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_add_patient"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="32dp"
+        android:contentDescription="@string/add_new_patient"
+        android:src="@android:drawable/ic_input_add" />
+</RelativeLayout>

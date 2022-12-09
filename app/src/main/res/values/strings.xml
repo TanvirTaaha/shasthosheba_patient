@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Patient</string>
+    <string name="sign_out">Sign out</string>
+    <string name="add_new_patient">Add new patient</string>
+    <string name="patients">Patients</string>
+    <string name="add">Add</string>
+    <string name="patient_birth_year">Patient birth year</string>
+    <string name="patient_name">Patient name</string>
+    <string name="connecting">Connecting…</string>
+    <string name="connection_lost">Connection lost</string>
+    <string name="doctor">Doctor:</string>
+    <string name="patient">Patient:</string>
+    <string name="illness">Illness:</string>
+    <string name="medicines">Medicines:</string>
+    <string name="tests">Tests:</string>
+    <string name="advice">Advice:</string>
+</resources>
