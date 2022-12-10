@@ -2,6 +2,7 @@ package com.shasthosheba.patient;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.widget.Toast;
 
@@ -139,11 +140,18 @@ public class StartActivity extends AppCompatActivity {
     }
 
     private boolean passed = false;
+    private boolean retried = false;
 
     private void handleAfterSignIn() {
         if (!preferenceManager.isConnected()) {
             Timber.d("Not connected");
             passed = false;
+            new Handler().postDelayed(() -> {
+                if (!retried) {
+                    retried = true;
+                    handleAfterSignIn();
+                }
+            }, 1000);
             showConnectedProgress(false);
             return;
         }
