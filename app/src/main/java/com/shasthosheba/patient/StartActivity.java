@@ -56,6 +56,11 @@ public class StartActivity extends AppCompatActivity {
         IdpResponse response = result.getIdpResponse();
         if (result.getResultCode() == RESULT_OK) {
             //Successfully signed in
+            FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (firebaseUser != null) {
+                showConnectedProgress(true);
+                preferenceManager.setUser(new User(firebaseUser.getUid(), firebaseUser.getDisplayName(), "online"));
+            }
             handleAfterSignIn();
             Timber.d("Logged in");
         } else {
@@ -99,6 +104,11 @@ public class StartActivity extends AppCompatActivity {
                 Timber.i("Launching sign in launcher");
                 signInLauncher.launch(signInIntent);
             } else { // signed in
+                showConnectedProgress(true);
+                preferenceManager.setUser(
+                        new User(firebaseAuth.getUid(),
+                                firebaseAuth.getCurrentUser().getDisplayName(),
+                                "offline"));
                 handleAfterSignIn();
             }
         });
@@ -118,16 +128,26 @@ public class StartActivity extends AppCompatActivity {
 
     }
 
+    private void showConnectedProgress(boolean connected) {
+        if (connected) {
+            binding.progressBar.setVisibility(View.VISIBLE);
+            binding.tvConnecting.setText(R.string.connecting);
+        } else { // Show connection lost
+            binding.progressBar.setVisibility(View.INVISIBLE);
+            binding.tvConnecting.setText(R.string.connection_lost);
+        }
+    }
+
     private boolean passed = false;
 
     private void handleAfterSignIn() {
         if (!preferenceManager.isConnected()) {
             Timber.d("Not connected");
             passed = false;
-            binding.progressBar.setVisibility(View.INVISIBLE);
-            binding.tvConnecting.setText(R.string.connection_lost);
+            showConnectedProgress(false);
             return;
         }
+        showConnectedProgress(true);
         passed = true;
         Timber.d("inside handle sign in function");
         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
