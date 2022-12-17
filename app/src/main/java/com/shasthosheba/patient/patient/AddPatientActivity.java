@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.shasthosheba.patient.app.PreferenceManager;
 import com.shasthosheba.patient.app.PublicVariables;
@@ -58,13 +59,23 @@ public class AddPatientActivity extends AppCompatActivity {
                 intermediary.getPatients().add(patientId);
                 patient.setId(patientId);
                 documentReference.set(patient)
-                        .addOnSuccessListener(unused -> fireStoreDB.collection(PublicVariables.INTERMEDIARY_KEY).document(intermediary.getId()).set(intermediary)
-                                .addOnSuccessListener(unused1 -> finish())
-                                .addOnFailureListener(e -> {
-                                    binding.tilPatientName.setEnabled(true);
-                                    binding.tilPatientBirthYear.setEnabled(true);
-                                    Timber.e(e);
-                                }))
+                        .addOnSuccessListener(unused -> {
+//                            fireStoreDB.collection(PublicVariables.INTERMEDIARY_KEY).document(intermediary.getId()).set(intermediary)
+//                                    .addOnSuccessListener(unused1 -> finish())
+//                                    .addOnFailureListener(e -> {
+//                                        binding.tilPatientName.setEnabled(true);
+//                                        binding.tilPatientBirthYear.setEnabled(true);
+//                                        Timber.e(e);
+//                                    });
+                            fireStoreDB.collection(PublicVariables.INTERMEDIARY_KEY).document(intermediary.getId())
+                                    .update(PublicVariables.INTERMEDIARY_PATIENT_IDs, FieldValue.arrayUnion(patientId))
+                                    .addOnSuccessListener(unused1 -> finish())
+                                    .addOnFailureListener(e -> {
+                                        binding.tilPatientName.setEnabled(true);
+                                        binding.tilPatientBirthYear.setEnabled(true);
+                                        Timber.e(e);
+                                    });
+                        })
                         .addOnFailureListener(e -> {
                             binding.tilPatientName.setEnabled(true);
                             binding.tilPatientBirthYear.setEnabled(true);

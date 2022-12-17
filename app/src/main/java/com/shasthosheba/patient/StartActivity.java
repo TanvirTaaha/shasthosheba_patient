@@ -62,6 +62,7 @@ public class StartActivity extends AppCompatActivity {
                 showConnectedProgress(true);
                 preferenceManager.setUser(new User(firebaseUser.getUid(), firebaseUser.getDisplayName(), "online"));
             }
+            Timber.d("calling handleAfterSignIn after signIn/signUp callback");
             handleAfterSignIn();
             Timber.d("Logged in");
         } else {
@@ -110,6 +111,7 @@ public class StartActivity extends AppCompatActivity {
                         new User(firebaseAuth.getUid(),
                                 firebaseAuth.getCurrentUser().getDisplayName(),
                                 "offline"));
+                Timber.d("calling handleAfterSignIn from onCreate");
                 handleAfterSignIn();
             }
         });
@@ -127,6 +129,10 @@ public class StartActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
+    }
+
+    private boolean isLoggedIn() {
+        return FirebaseAuth.getInstance().getCurrentUser() != null;
     }
 
     private void showConnectedProgress(boolean connected) {
@@ -149,6 +155,7 @@ public class StartActivity extends AppCompatActivity {
             new Handler().postDelayed(() -> {
                 if (!retried) {
                     retried = true;
+                    Timber.d("retrying calling handleAfterSignIn after delay");
                     handleAfterSignIn();
                 }
             }, 1000);
@@ -174,6 +181,7 @@ public class StartActivity extends AppCompatActivity {
                 }
                 preferenceManager.setConnected(Boolean.TRUE.equals(snapshot.getValue(Boolean.class)));
                 if (!passed) {
+                    Timber.d("calling handleAfterSignIn from connection true callback");
                     handleAfterSignIn();
                 }
             }
@@ -217,7 +225,10 @@ public class StartActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Utils.setStatusOnline(this);
-        handleAfterSignIn();
+        if (isLoggedIn()) {
+            Timber.d("calling handleAfterSignIn from onResume");
+            handleAfterSignIn();
+        }
     }
 
     private void createNotificationChannel() {
