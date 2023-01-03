@@ -9,13 +9,16 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.lifecycle.Observer;
 
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.FirebaseAuthUIActivityResultContract;
 import com.firebase.ui.auth.IdpResponse;
 import com.firebase.ui.auth.data.model.FirebaseAuthUIAuthenticationResult;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -29,6 +32,7 @@ import com.shasthosheba.patient.app.PublicVariables;
 import com.shasthosheba.patient.databinding.ActivityStartBinding;
 import com.shasthosheba.patient.model.Intermediary;
 import com.shasthosheba.patient.model.User;
+import com.shasthosheba.patient.repo.Repository;
 import com.shasthosheba.patient.util.Utils;
 
 import org.jitsi.meet.sdk.JitsiMeet;
@@ -62,9 +66,9 @@ public class StartActivity extends AppCompatActivity {
                 showConnectedProgress(true);
                 preferenceManager.setUser(new User(firebaseUser.getUid(), firebaseUser.getDisplayName(), "online"));
             }
-            Timber.d("calling handleAfterSignIn after signIn/signUp callback");
-            handleAfterSignIn();
+            Timber.d("calling handleAfterSignIn from signInResult");
             Timber.d("Logged in");
+            handleAfterSignIn();
         } else {
             if (response != null) {
                 Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show();
@@ -83,26 +87,26 @@ public class StartActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
         binding = ActivityStartBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         preferenceManager = new PreferenceManager(this);
 
 
-        List<AuthUI.IdpConfig> providers = Arrays.asList(
-                new AuthUI.IdpConfig.EmailBuilder().build(),
-                new AuthUI.IdpConfig.GoogleBuilder().build()
-        );
-        Intent signInIntent = AuthUI.getInstance()
-                .createSignInIntentBuilder()
-                .setAlwaysShowSignInMethodScreen(true)
-                .setIsSmartLockEnabled(false)
-                .setAvailableProviders(providers)
-                .build();
-
         createNotificationChannel();
 
         FirebaseAuth.getInstance().addAuthStateListener(firebaseAuth -> {
             if (firebaseAuth.getCurrentUser() == null) { // not signed in
+                List<AuthUI.IdpConfig> providers = Arrays.asList(
+                        new AuthUI.IdpConfig.EmailBuilder().build(),
+                        new AuthUI.IdpConfig.GoogleBuilder().build()
+                );
+                Intent signInIntent = AuthUI.getInstance()
+                        .createSignInIntentBuilder()
+                        .setAlwaysShowSignInMethodScreen(true)
+                        .setIsSmartLockEnabled(false)
+                        .setAvailableProviders(providers)
+                        .build();
                 Timber.i("Launching sign in launcher");
                 signInLauncher.launch(signInIntent);
             } else { // signed in
@@ -111,7 +115,7 @@ public class StartActivity extends AppCompatActivity {
                         new User(firebaseAuth.getUid(),
                                 firebaseAuth.getCurrentUser().getDisplayName(),
                                 "offline"));
-                Timber.d("calling handleAfterSignIn from onCreate");
+                Timber.d("calling handleAfterSignIn from authStateListener");
                 handleAfterSignIn();
             }
         });
@@ -145,90 +149,70 @@ public class StartActivity extends AppCompatActivity {
         }
     }
 
-    private boolean passed = false;
-    private boolean retried = false;
-
     private void handleAfterSignIn() {
-        if (!preferenceManager.isConnected()) {
-            Timber.d("Not connected");
-            passed = false;
-            new Handler().postDelayed(() -> {
-                if (!retried) {
-                    retried = true;
-                    Timber.d("retrying calling handleAfterSignIn after delay");
-                    handleAfterSignIn();
-                }
-            }, 1000);
-            showConnectedProgress(false);
-            return;
-        }
-        showConnectedProgress(true);
-        passed = true;
         Timber.d("inside handle sign in function");
         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+        assert firebaseUser != null;
         mUser = new User(firebaseUser.getUid(), firebaseUser.getDisplayName(), "online");
-        dataRef.child(firebaseUser.getUid()).setValue(mUser);
-//        Toast.makeText(StartActivity.this, "Signed in successfully", Toast.LENGTH_LONG).show();
-
         preferenceManager.setUser(mUser);
-        conRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                Timber.d(".info/connected:%s", snapshot.getValue());
-                if (Boolean.FALSE.equals(snapshot.getValue(Boolean.class))) { //NOT CONNECTED
-                    User usr = new User(mUser.getuId(), mUser.getName(), "offline");
-                    dataRef.child(mUser.getuId()).onDisconnect().setValue(usr);
-                }
-                preferenceManager.setConnected(Boolean.TRUE.equals(snapshot.getValue(Boolean.class)));
-                if (!passed) {
-                    Timber.d("calling handleAfterSignIn from connection true callback");
-                    handleAfterSignIn();
-                }
-            }
+        Timber.d("User:%s", mUser);
 
+        if (Repository.getInstance().getNetStatus().hasActiveObservers()) {
+            // this is because AuthStateListener somehow gets callbacks multiple times.
+            // this is to prevent multiple observer being registered as this on must be the first in this app.
+            return;
+        }
+        showConnectedProgress(Repository.getInstance().isConnected());
+        Repository.getInstance().getNetStatus().observe(StartActivity.this, new Observer<Boolean>() {
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Timber.e(error.toException());
+            public void onChanged(Boolean netAvailable) {
+                Timber.d("In ConMan network callbacks:netAvailable:%s", netAvailable);
+                if (netAvailable) {
+                    Timber.d("Got connection, checking for data, setting if not already exists and loading otherwise");
+                    showConnectedProgress(true);
+                    dataRef.child(firebaseUser.getUid()).setValue(mUser)
+                            .addOnSuccessListener(unused -> {
+                                Timber.d("Intermediary status set");
+                            })
+                            .addOnFailureListener(Timber::e);
+                    FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+                    firestore.collection(PublicVariables.INTERMEDIARY_KEY).document(mUser.getuId()).get()
+                            .addOnSuccessListener(documentSnapshot -> {
+                                Timber.d("dddddddddddd");
+                                if (documentSnapshot != null && documentSnapshot.exists()) {
+                                    Timber.d("checking for existence of intermediary:%s", documentSnapshot.getData());
+                                    preferenceManager.setIntermediary(documentSnapshot.toObject(Intermediary.class));
+                                    Timber.d("checking whether intermediary at pref_Man is null:%s", preferenceManager.getIntermediary());
+                                    startActivity(new Intent(StartActivity.this, MainActivity.class));
+                                } else {
+                                    //No data found
+                                    Timber.d("No data found");
+                                    Timber.d("[should be null as no data found]checking for existence of intermediary:%s", documentSnapshot.getData());
+                                    Intermediary intermediary = new Intermediary();
+                                    intermediary.setId(mUser.getuId());
+                                    intermediary.setName(mUser.getName());
+                                    intermediary.setPatients(new ArrayList<>());
+                                    firestore.collection(PublicVariables.INTERMEDIARY_KEY).document(mUser.getuId()).set(intermediary)
+                                            .addOnSuccessListener(unused -> {
+                                                Timber.d("Added new data:%s", intermediary);
+                                                preferenceManager.setIntermediary(intermediary);
+                                                startActivity(new Intent(StartActivity.this, MainActivity.class));
+                                            }).addOnFailureListener(Timber::e);
+                                }
+                                Timber.d("Document:%s", documentSnapshot.getData());
+                            })
+                            .addOnFailureListener(Timber::e);
+                } else {
+                    showConnectedProgress(false);
+                }
             }
         });
-
-        FirebaseFirestore firestore = FirebaseFirestore.getInstance();
-        firestore.collection(PublicVariables.INTERMEDIARY_KEY).document(mUser.getuId()).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    Timber.d("dddddddddddd");
-                    if (documentSnapshot != null && documentSnapshot.exists()) {
-                        Timber.d("checking for existence of intermediary:%s", documentSnapshot.getData());
-                        preferenceManager.setIntermediary(documentSnapshot.toObject(Intermediary.class));
-                        Timber.d("checking whether intermediary at pref_Man is null:%s", preferenceManager.getIntermediary());
-                        startActivity(new Intent(StartActivity.this, MainActivity.class));
-                    } else {
-                        //No data found
-                        Timber.d("No data found");
-                        Timber.d("[should be null]checking for existence of intermediary:%s", documentSnapshot.getData());
-                        Intermediary intermediary = new Intermediary();
-                        intermediary.setId(mUser.getuId());
-                        intermediary.setName(mUser.getName());
-                        intermediary.setPatients(new ArrayList<>());
-                        firestore.collection(PublicVariables.INTERMEDIARY_KEY).document(mUser.getuId()).set(intermediary)
-                                .addOnSuccessListener(unused -> {
-                                    Timber.d("Added new data:%s", intermediary);
-                                    preferenceManager.setIntermediary(intermediary);
-                                    startActivity(new Intent(StartActivity.this, MainActivity.class));
-                                }).addOnFailureListener(Timber::e);
-                    }
-                    Timber.d("Document:%s", documentSnapshot.getData());
-                })
-                .addOnFailureListener(Timber::e);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         Utils.setStatusOnline(this);
-        if (isLoggedIn()) {
-            Timber.d("calling handleAfterSignIn from onResume");
-            handleAfterSignIn();
-        }
     }
 
     private void createNotificationChannel() {
