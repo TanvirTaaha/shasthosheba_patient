@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingBottom="16dp"
+    android:theme="@style/Theme.Patient">
+
+    <RadioGroup
+        android:id="@+id/radio_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:checkedButton="@id/radio_without_payment"
+        android:orientation="vertical">
+
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/radio_without_payment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:text="@string/without_payment"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/radio_with_payment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:text="@string/with_payment"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+    </RadioGroup>
+
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:id="@+id/ll_payment_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_amount"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/amount"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/tiet_amount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_bkash_no"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/bkash_account_no"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/tiet_bkash_no"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="phone"
+                android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_txn_id"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/transaction_id"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/tiet_txn_id"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+        </com.google.android.material.textfield.TextInputLayout>
+    </androidx.appcompat.widget.LinearLayoutCompat>
+</androidx.appcompat.widget.LinearLayoutCompat>

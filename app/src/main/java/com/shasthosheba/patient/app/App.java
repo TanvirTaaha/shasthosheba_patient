@@ -14,9 +14,9 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.shasthosheba.patient.BuildConfig;
 import com.shasthosheba.patient.R;
-import com.shasthosheba.patient.TagTree;
 import com.shasthosheba.patient.model.User;
 import com.shasthosheba.patient.repo.Repository;
+import com.shasthosheba.patient.util.TagTree;
 
 import java.lang.ref.WeakReference;
 

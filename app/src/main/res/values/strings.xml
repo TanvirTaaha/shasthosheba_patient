@@ -14,4 +14,17 @@
     <string name="medicines">Medicines:</string>
     <string name="tests">Tests:</string>
     <string name="advice">Advice:</string>
+    <string name="connect_with_our_doctors_directly">Connect with our doctors directly in the \n<b>Virtual Chamber</b></string>
+    <string name="go_to_chamber">Go to chamber</string>
+    <string name="prescription">Prescription</string>
+    <string name="without_payment">Without payment</string>
+    <string name="with_payment">With payment (bKash)</string>
+    <string name="amount">Amount</string>
+    <string name="bkash_account_no">bKash account no</string>
+    <string name="transaction_id">Transaction id (from sms)</string>
+    <string name="leave_chamber">Leave chamber</string>
+    <string name="txn">Txn: %1s</string>
+    <string name="bkash_with_param">bKash: %1s</string>
+    <string name="chamber">Chamber</string>
+    <string name="no_patients">No patients</string>
 </resources>

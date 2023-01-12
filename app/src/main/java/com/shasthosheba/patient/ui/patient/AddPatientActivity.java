@@ -1,4 +1,4 @@
-package com.shasthosheba.patient.patient;
+package com.shasthosheba.patient.ui.patient;
 
 import android.os.Bundle;
 

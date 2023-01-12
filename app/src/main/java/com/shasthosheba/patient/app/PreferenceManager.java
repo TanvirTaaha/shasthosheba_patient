@@ -13,7 +13,9 @@ public class PreferenceManager {
     public static enum PreferenceKey {
         USER("user"),
         INTERMEDIARY("intermediary"),
-        CONNECTED("is_connected");
+        CONNECTED("is_connected"),
+
+        SERVER_TIMESTAMP_OF_CHAMBER("server_timestamp_of_chamber"),;
 
         private final String key;
 

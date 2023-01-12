@@ -1,18 +1,28 @@
-package com.shasthosheba.patient;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
+package com.shasthosheba.patient.ui;
 
 import android.annotation.SuppressLint;
 import android.app.PendingIntent;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.RadioGroup;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AlertDialogLayout;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -20,16 +30,23 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.shasthosheba.patient.R;
 import com.shasthosheba.patient.app.IntentTags;
 import com.shasthosheba.patient.app.PreferenceManager;
 import com.shasthosheba.patient.app.PublicVariables;
 import com.shasthosheba.patient.databinding.ActivityMainBinding;
+import com.shasthosheba.patient.databinding.ChamberAlertDialogBinding;
 import com.shasthosheba.patient.model.Call;
+import com.shasthosheba.patient.model.ChamberMember;
 import com.shasthosheba.patient.model.Intermediary;
 import com.shasthosheba.patient.model.Patient;
 import com.shasthosheba.patient.model.User;
-import com.shasthosheba.patient.patient.AddPatientActivity;
-import com.shasthosheba.patient.patient.PatientAdapter;
+import com.shasthosheba.patient.repo.DataOrError;
+import com.shasthosheba.patient.repo.Repository;
+import com.shasthosheba.patient.ui.chamber.ChamberActivityIntermediary;
+import com.shasthosheba.patient.ui.chamber.ChamberWaitingService;
+import com.shasthosheba.patient.ui.patient.AddPatientActivity;
+import com.shasthosheba.patient.ui.patient.PatientAdapter;
 import com.shasthosheba.patient.util.Utils;
 
 import java.util.ArrayList;
@@ -46,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private User mUser;
     private PreferenceManager preferenceManager;
     private PatientAdapter adapter;
+    private MainActivityViewModel mViewModel;
 
     private FirebaseFirestore fireStoreDB = FirebaseFirestore.getInstance();
 
@@ -65,6 +83,29 @@ public class MainActivity extends AppCompatActivity {
 
         binding.fabAddPatient.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, AddPatientActivity.class)));
 
+        // called from waiting service
+        // setCallListener();
+
+        binding.btnGoToChamber.setOnClickListener(v -> {
+            if (Repository.getInstance().isConnected()) {
+                launchChamber();
+            }
+        });
+
+
+        binding.ibSignOut.setOnClickListener(v -> signOut(mUser));
+        mViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
+        mViewModel.getNetStatus().observe(this, netAvailable -> {
+            Snackbar snackbar = Snackbar.make(binding.getRoot(), "Check your internet connection", Snackbar.LENGTH_INDEFINITE);
+            if (netAvailable) {
+                snackbar.dismiss();
+            } else {
+                snackbar.show();
+            }
+        });
+    }
+
+    private void setCallListener() {
         callRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -89,10 +130,53 @@ public class MainActivity extends AppCompatActivity {
                 Timber.e(error.toException());
             }
         });
+    }
 
-        fetchPatients(mUser.getuId());
+    private void launchChamber() {
+        ChamberMember member = new ChamberMember();
+        member.setIntermediaryId(preferenceManager.getUser().getuId());
+        member.setName(preferenceManager.getUser().getName());
 
-        binding.ibSignOut.setOnClickListener(v -> signOut(mUser));
+        ChamberAlertDialogBinding chamberAlertDialogBinding = ChamberAlertDialogBinding.inflate(getLayoutInflater());
+        chamberAlertDialogBinding.llPaymentInfo.setVisibility(View.GONE);
+        chamberAlertDialogBinding.radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.radio_without_payment) {
+                member.setWithPayment(false);
+                chamberAlertDialogBinding.llPaymentInfo.setVisibility(View.GONE);
+            } else if (checkedId == R.id.radio_with_payment) {
+                member.setWithPayment(true);
+                chamberAlertDialogBinding.llPaymentInfo.setVisibility(View.VISIBLE);
+            }
+        });
+        MaterialAlertDialogBuilder materialAlertDialogBuilder = new MaterialAlertDialogBuilder(this, R.style.AlertDialogStyle);
+        materialAlertDialogBuilder.setView(chamberAlertDialogBinding.getRoot())
+                .setTitle("Join chamber")
+                .setMessage("Select payment options")
+                .setPositiveButton("Confirm", (dialog, which) -> {
+                    if (member.isWithPayment()) {
+                        int amount = Integer.parseInt(chamberAlertDialogBinding.tietAmount.getText().toString().trim());
+                        member.setAmount(amount);
+                        member.setMemberBKashNo(chamberAlertDialogBinding.tietBkashNo.getText().toString().trim());
+                        member.setTransactionId(chamberAlertDialogBinding.tietTxnId.getText().toString().trim());
+                    }
+                    mViewModel.addChamberMember(member).observe(this, booleanOrError -> {
+                        if (booleanOrError.data) {
+                            Timber.d("Successfully added chamber_member");
+                            waitAtChamber(member.getIntermediaryId());
+                        } else {
+                            Timber.e(booleanOrError.error);
+                        }
+                    });
+                })
+                .setNeutralButton("Cancel", (dialog, which) -> dialog.dismiss()).show();
+    }
+
+    private void waitAtChamber(String uId) {
+        Intent waitForegroundService = new Intent(getApplicationContext(), ChamberWaitingService.class)
+                .putExtra(IntentTags.USER_ID.tag, uId);
+        startService(waitForegroundService);
+        Intent chamberActivity = new Intent(getApplicationContext(), ChamberActivityIntermediary.class);
+        startActivity(chamberActivity);
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -141,16 +225,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void notifyCall(Call call) {
         Intent acceptIntent = new Intent(MainActivity.this, BroadcastReceiver.class)
-                .setAction(IntentTags.ACTION_ACCEPT.tag)
+                .setAction(IntentTags.ACTION_ACCEPT_CALL.tag)
                 .putExtra(IntentTags.CALL_OBJ.tag, call);
         PendingIntent acceptPendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, acceptIntent, PendingIntent.FLAG_IMMUTABLE);
         Intent rejectIntent = new Intent(MainActivity.this, BroadcastReceiver.class)
-                .setAction(IntentTags.ACTION_REJECT.tag)
+                .setAction(IntentTags.ACTION_REJECT_CALL.tag)
                 .putExtra(IntentTags.CALL_OBJ.tag, call);
         PendingIntent rejectPendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, rejectIntent, PendingIntent.FLAG_IMMUTABLE);
 
 
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(MainActivity.this, PublicVariables.CHANNEL_ID)
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(MainActivity.this, PublicVariables.CALL_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(call.isVideo() ? "Video call" : "Audio call")
                 .setContentText("Call from " + call.getDoctor())
@@ -186,5 +270,15 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(new Intent(MainActivity.this, StartActivity.class));
                 });
 
+    }
+
+    public static class MainActivityViewModel extends ViewModel {
+        public LiveData<Boolean> getNetStatus() {
+            return Repository.getInstance().getNetStatus();
+        }
+
+        public LiveData<DataOrError<Boolean, Exception>> addChamberMember(ChamberMember chamberMember) {
+            return Repository.getInstance().addChamberMember(chamberMember);
+        }
     }
 }

@@ -1,6 +1,7 @@
-package com.shasthosheba.patient.patient;
+package com.shasthosheba.patient.ui.patient;
 
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -11,6 +12,8 @@ import com.shasthosheba.patient.R;
 import com.shasthosheba.patient.app.IntentTags;
 import com.shasthosheba.patient.databinding.ActivityPrescriptionViewBinding;
 import com.shasthosheba.patient.model.Prescription;
+
+import timber.log.Timber;
 
 public class PrescriptionViewActivity extends AppCompatActivity {
     private ActivityPrescriptionViewBinding binding;
@@ -34,5 +37,14 @@ public class PrescriptionViewActivity extends AppCompatActivity {
         binding.lvMedicineList.setAdapter(new ArrayAdapter<>(this, R.layout.med_and_test_view_item, R.id.tv_text, prescription.getMedicines()));
         binding.lvTestsList.setAdapter(new ArrayAdapter<>(this, R.layout.med_and_test_view_item, R.id.tv_text, prescription.getTests()));
         binding.tvAdvice.setText(prescription.getAdvice());
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            Timber.d("onOptionsItemSelected: android.R.id.home");
+            onBackPressed();
+        }
+        return true;
     }
 }

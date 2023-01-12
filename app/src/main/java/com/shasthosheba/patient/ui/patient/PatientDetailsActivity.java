@@ -1,5 +1,6 @@
-package com.shasthosheba.patient.patient;
+package com.shasthosheba.patient.ui.patient;
 
+import androidx.activity.result.ActivityResultRegistry;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -110,6 +111,7 @@ public class PatientDetailsActivity extends AppCompatActivity {
                 .addOnFailureListener(Timber::e);
     }
 
+
     private class PrescriptionTitleAdapter extends RecyclerView.Adapter<PrescriptionTitleAdapter.PresTitleViewHolder> {
         private List<Prescription> mList;
 
@@ -136,6 +138,7 @@ public class PatientDetailsActivity extends AppCompatActivity {
 //                    Toast.makeText(v.getContext(), prescription.getPrescriptionTitle(), Toast.LENGTH_LONG).show();startActivity(new Intent(v.getContext(), PrescriptionViewActivity.class)
                     startActivity(new Intent(v.getContext(), PrescriptionViewActivity.class)
                             .putExtra(IntentTags.PRESCRIPTION_OBJ.tag, prescription.toString()));
+
                 }
             });
         }

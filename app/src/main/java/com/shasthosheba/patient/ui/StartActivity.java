@@ -1,4 +1,4 @@
-package com.shasthosheba.patient;
+package com.shasthosheba.patient.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.NotificationChannelCompat;
+import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.lifecycle.Observer;
 
@@ -27,6 +28,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.shasthosheba.patient.R;
 import com.shasthosheba.patient.app.PreferenceManager;
 import com.shasthosheba.patient.app.PublicVariables;
 import com.shasthosheba.patient.databinding.ActivityStartBinding;
@@ -49,10 +51,8 @@ import timber.log.Timber;
 public class StartActivity extends AppCompatActivity {
 
 
-    private final ActivityResultLauncher<Intent> signInLauncher = registerForActivityResult(
-            new FirebaseAuthUIActivityResultContract(),
-            this::onSignInResult
-    );
+    private ActivityResultLauncher<Intent> signInLauncher;
+    private boolean signInLauncherRegistered = false;
 
     private User mUser;
     private PreferenceManager preferenceManager;
@@ -95,6 +95,7 @@ public class StartActivity extends AppCompatActivity {
 
         createNotificationChannel();
 
+
         FirebaseAuth.getInstance().addAuthStateListener(firebaseAuth -> {
             if (firebaseAuth.getCurrentUser() == null) { // not signed in
                 List<AuthUI.IdpConfig> providers = Arrays.asList(
@@ -107,8 +108,12 @@ public class StartActivity extends AppCompatActivity {
                         .setIsSmartLockEnabled(false)
                         .setAvailableProviders(providers)
                         .build();
-                Timber.i("Launching sign in launcher");
-                signInLauncher.launch(signInIntent);
+                if (signInLauncherRegistered) {
+                    Timber.v("Launching sign in launcher");
+                    signInLauncher.launch(signInIntent);
+                } else {
+                    Timber.v("Ignoring because activity is in background");
+                }
             } else { // signed in
                 showConnectedProgress(true);
                 preferenceManager.setUser(
@@ -184,6 +189,7 @@ public class StartActivity extends AppCompatActivity {
                                     preferenceManager.setIntermediary(documentSnapshot.toObject(Intermediary.class));
                                     Timber.d("checking whether intermediary at pref_Man is null:%s", preferenceManager.getIntermediary());
                                     startActivity(new Intent(StartActivity.this, MainActivity.class));
+                                    finish();
                                 } else {
                                     //No data found
                                     Timber.d("No data found");
@@ -197,6 +203,7 @@ public class StartActivity extends AppCompatActivity {
                                                 Timber.d("Added new data:%s", intermediary);
                                                 preferenceManager.setIntermediary(intermediary);
                                                 startActivity(new Intent(StartActivity.this, MainActivity.class));
+                                                finish();
                                             }).addOnFailureListener(Timber::e);
                                 }
                                 Timber.d("Document:%s", documentSnapshot.getData());
@@ -215,16 +222,37 @@ public class StartActivity extends AppCompatActivity {
         Utils.setStatusOnline(this);
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        signInLauncher = registerForActivityResult(
+                new FirebaseAuthUIActivityResultContract(),
+                this::onSignInResult
+        );
+        signInLauncherRegistered = true;
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        signInLauncherRegistered = false;
+    }
+
     private void createNotificationChannel() {
         Timber.v("Creating notification channel");
         CharSequence name = "Call";
         String description = "Audio and video call";
-        int importance = NotificationManagerCompat.IMPORTANCE_MAX;
-        NotificationChannelCompat channel = new NotificationChannelCompat.Builder(PublicVariables.CHANNEL_ID, importance)
+        NotificationChannelCompat channel = new NotificationChannelCompat.Builder(PublicVariables.CALL_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_MAX)
                 .setName(name)
                 .setDescription(description)
                 .build();
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(StartActivity.this);
         notificationManager.createNotificationChannel(channel);
+        // channel for waiting in chamber notification
+        NotificationChannelCompat chamberChannel = new NotificationChannelCompat.Builder(PublicVariables.CHAMBER_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
+                .setName("Chamber")
+                .setDescription("Chamber waiting notification")
+                .build();
+        notificationManager.createNotificationChannel(chamberChannel);
     }
 }

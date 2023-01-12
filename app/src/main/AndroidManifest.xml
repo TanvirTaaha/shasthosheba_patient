@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.shasthosheba.patient" >
+    package="com.shasthosheba.patient">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -15,6 +15,7 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" /> <!-- Needed to communicate with already-paired Bluetooth devices. (Android 12 upwards) -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:name=".app.App"
@@ -26,27 +27,42 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Patient"
-        tools:targetApi="31" >
+        tools:targetApi="31">
+        <service
+            android:name=".ui.chamber.ChamberWaitingService"
+            android:enabled="true"
+            android:exported="true" />
+
         <activity
-            android:name=".patient.PrescriptionViewActivity"
+            android:name=".ui.chamber.ChamberActivityIntermediary"
+            android:parentActivityName=".ui.MainActivity"
+            android:label="@string/chamber"
+            android:theme="@style/Theme.Patient"
             android:exported="false" />
         <activity
-            android:name=".patient.PatientDetailsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".patient.AddPatientActivity"
+            android:name=".ui.patient.PrescriptionViewActivity"
             android:exported="false"
-            android:parentActivityName=".MainActivity"
+            android:label="@string/prescription"
+            android:parentActivityName=".ui.patient.PatientDetailsActivity" />
+        <activity
+            android:name=".ui.patient.PatientDetailsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.MainActivity" />
+        <activity
+            android:name=".ui.patient.AddPatientActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.MainActivity"
             android:theme="@style/Theme.Patient" />
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="false"
             android:label="@string/patients"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.Patient.NoActionBar" />
         <activity
-            android:name=".StartActivity"
+            android:name=".ui.StartActivity"
             android:exported="true"
-            android:theme="@style/Theme.Patient.NoActionBar" >
+            android:theme="@style/Theme.Patient.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -55,8 +71,8 @@
         </activity>
 
         <receiver
-            android:name=".BroadcastReceiver"
-            android:exported="false" >
+            android:name=".ui.BroadcastReceiver"
+            android:exported="false">
             <intent-filter>
                 <action android:name="Jitsi_call_accept" />
                 <action android:name="Jitsi_call_reject" />
