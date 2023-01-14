@@ -62,6 +62,10 @@ public class ChamberWaitingService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+        if (intent == null) {
+            Timber.wtf("Intent is null");
+            return START_NOT_STICKY;
+        }
         Timber.d("onStartCommand");
         uId = intent.getStringExtra(IntentTags.USER_ID.tag);
         Timber.d("got uid:%s", uId);

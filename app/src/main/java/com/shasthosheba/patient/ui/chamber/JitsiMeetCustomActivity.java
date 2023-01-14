@@ -25,7 +25,7 @@ public class JitsiMeetCustomActivity extends JitsiMeetActivity {
         intent.setAction("org.jitsi.meet.CONFERENCE");
         intent.putExtra("JitsiMeetConferenceOptions", options);
         if (!(context instanceof Activity)) {
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         }
         context.startActivity(intent);
         endCallback = callback;
