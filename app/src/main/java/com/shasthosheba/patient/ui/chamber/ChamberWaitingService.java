@@ -18,6 +18,7 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.database.core.Repo;
 import com.shasthosheba.patient.R;
 import com.shasthosheba.patient.app.IntentTags;
+import com.shasthosheba.patient.app.PreferenceManager;
 import com.shasthosheba.patient.app.PublicVariables;
 import com.shasthosheba.patient.model.Call;
 import com.shasthosheba.patient.model.ChamberMember;
@@ -39,16 +40,16 @@ public class ChamberWaitingService extends Service {
         Timber.d("Notify call called");
         Intent acceptIntent = new Intent(getApplicationContext(), BroadcastReceiver.class)
                 .setAction(IntentTags.ACTION_ACCEPT_CALL.tag)
-                .putExtra(IntentTags.CALL_OBJ.tag, call);
+                .putExtra(IntentTags.CALL_OBJ.tag, call.toString());
         PendingIntent acceptPendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, acceptIntent, PendingIntent.FLAG_IMMUTABLE);
         Intent rejectIntent = new Intent(getApplicationContext(), BroadcastReceiver.class)
                 .setAction(IntentTags.ACTION_REJECT_CALL.tag)
-                .putExtra(IntentTags.CALL_OBJ.tag, call);
+                .putExtra(IntentTags.CALL_OBJ.tag, call.toString());
         PendingIntent rejectPendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, rejectIntent, PendingIntent.FLAG_IMMUTABLE);
 
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext(), PublicVariables.CALL_CHANNEL_ID)
-//                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(call.isVideo() ? "Video call" : "Audio call")
                 .setContentText("Call from " + call.getDoctor())
                 .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -92,6 +93,7 @@ public class ChamberWaitingService extends Service {
         Timber.d("starting foreground notification");
         startForeground(PublicVariables.WAITING_NOTIFICATION_ID, waitingNotificationBuilder.build());
         callRef.addValueEventListener(valueEventListener);
+        new PreferenceManager(getApplicationContext()).setChamberRunning(true);
         return START_STICKY;
     }
 
@@ -150,6 +152,7 @@ public class ChamberWaitingService extends Service {
             Timber.d("onDestroy:finishing mClientActivity");
             mClientActivity.finishSelf();
         }
+        new PreferenceManager(getApplicationContext()).setChamberRunning(false);
         Repository.getInstance().removeChamberMember(uId);
     }
 

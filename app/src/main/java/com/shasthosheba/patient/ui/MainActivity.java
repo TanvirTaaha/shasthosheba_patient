@@ -1,20 +1,27 @@
 package com.shasthosheba.patient.ui;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.RadioGroup;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AlertDialogLayout;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModel;
@@ -66,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
     private MainActivityViewModel mViewModel;
 
     private FirebaseFirestore fireStoreDB = FirebaseFirestore.getInstance();
+    private ActivityResultLauncher<String> requestPermissionLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,17 +94,15 @@ public class MainActivity extends AppCompatActivity {
         // called from waiting service
         // setCallListener();
 
-        binding.btnGoToChamber.setOnClickListener(v -> {
-            if (Repository.getInstance().isConnected()) {
-                launchChamber();
-            }
-        });
+        binding.btnGoToChamber.setOnClickListener(v -> askNotificationPermission());
 
 
         binding.ibSignOut.setOnClickListener(v -> signOut(mUser));
         mViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
         mViewModel.getNetStatus().observe(this, netAvailable -> {
-            Snackbar snackbar = Snackbar.make(binding.getRoot(), "Check your internet connection", Snackbar.LENGTH_INDEFINITE);
+            Snackbar snackbar;
+            snackbar = Snackbar.make(binding.getRoot(), "Check your internet connection", Snackbar.LENGTH_INDEFINITE);
+            snackbar.setAction("Ok", v -> snackbar.dismiss());
             if (netAvailable) {
                 snackbar.dismiss();
             } else {
@@ -221,6 +227,61 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         fetchPatients(mUser.getuId());
         Utils.setStatusOnline(this);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    proceedAfterNotificationPermission();
+                } else {
+                    Snackbar notPermittedSnack = Snackbar.make(binding.getRoot(), "Calling will not work without notification", Snackbar.LENGTH_INDEFINITE);
+                    notPermittedSnack.setAction("Permit", v -> {
+                        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+                    }).show();
+                }
+            });
+        }
+    }
+
+
+    private void askNotificationPermission() {
+        // This is only necessary for API level >= 33 (TIRAMISU)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED) {
+                proceedAfterNotificationPermission();
+            } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                // display an educational UI explaining to the user the features that will be enabled
+                // by them granting the POST_NOTIFICATION permission. This UI should provide the user
+                // "OK" and "No thanks" buttons. If the user selects "OK," directly request the permission.
+                // If the user selects "No thanks," allow the user to continue without notifications.
+                new AlertDialog.Builder(this)
+                        .setTitle("Grant Notification")
+                        .setMessage("The calling feature with doctor requires notifications to show. Grant the permission to use call feature")
+                        .setNeutralButton("Later", (dialog, which) -> dialog.dismiss())
+                        .setPositiveButton("Ok", (dialog, which) -> requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS))
+                        .create().show();
+            } else {
+                // Directly ask for the permission
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        } else {
+            proceedAfterNotificationPermission();
+        }
+    }
+
+    private void proceedAfterNotificationPermission() {
+        if (!preferenceManager.isChamberRunning()) {
+            if (Repository.getInstance().isConnected()) {
+                launchChamber();
+            }
+        } else {
+            Timber.v("chamber waiting service is running. not show dialog. direct go to chamber");
+            waitAtChamber(preferenceManager.getUser().getuId());
+        }
     }
 
     private void notifyCall(Call call) {

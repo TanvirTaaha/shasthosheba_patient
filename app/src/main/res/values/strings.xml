@@ -9,7 +9,7 @@
     <string name="connecting">Connecting…</string>
     <string name="connection_lost">Connection lost</string>
     <string name="doctor">Doctor:</string>
-    <string name="patient">Patient:</string>
+    <string name="patient_with_colon">Patient:</string>
     <string name="illness">Illness:</string>
     <string name="medicines">Medicines:</string>
     <string name="tests">Tests:</string>
@@ -27,4 +27,6 @@
     <string name="bkash_with_param">bKash: %1s</string>
     <string name="chamber">Chamber</string>
     <string name="no_patients">No patients</string>
+    <string name="patient">Patient</string>
+    <string name="call_notification_channel">call_notification_channel</string>
 </resources>

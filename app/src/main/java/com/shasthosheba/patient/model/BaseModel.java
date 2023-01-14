@@ -4,7 +4,9 @@ import androidx.annotation.NonNull;
 
 import com.google.gson.Gson;
 
-public abstract class BaseModel {
+import java.io.Serializable;
+
+public abstract class BaseModel implements Serializable {
     @NonNull
     @Override
     public String toString() {

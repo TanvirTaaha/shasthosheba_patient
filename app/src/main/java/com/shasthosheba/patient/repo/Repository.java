@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.os.Build;
+import android.widget.Toast;
 
 import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
@@ -25,6 +26,8 @@ import com.google.firebase.database.DatabaseException;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.shasthosheba.patient.R;
 import com.shasthosheba.patient.app.App;
 import com.shasthosheba.patient.app.PreferenceManager;
 import com.shasthosheba.patient.app.PublicVariables;
@@ -146,10 +149,28 @@ public class Repository {
         return result;
     }
 
-    private MutableLiveData<DataOrError<Boolean, Exception>> addChamberMember;
+    private MutableLiveData<DataOrError<Boolean, Exception>> addChamberMemberLD;
 
     public LiveData<DataOrError<Boolean, Exception>> addChamberMember(ChamberMember chamberMember) {
-        addChamberMember = new MutableLiveData<>();
+        addChamberMemberLD = new MutableLiveData<>();
+        FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(task -> {
+                    if (!task.isSuccessful()) {
+                        Timber.e(task.getException(), "Fetching FCM registration token failed");
+                        return;
+                    }
+
+                    // Get new FCM registration token
+                    String token = task.getResult();
+                    Timber.d("addChamberMember:New FCM token:%s", token);
+
+                    chamberMember.setCallDeviceToken(token);
+                    addChamberMember_Impl(chamberMember);
+                });
+        return addChamberMemberLD;
+    }
+
+    private LiveData<DataOrError<Boolean, Exception>> addChamberMember_Impl(ChamberMember chamberMember) {
         Map<String, Object> valueOfTime = new HashMap<>();
         valueOfTime.put("timestamp", ServerValue.TIMESTAMP);
         String uId = chamberMember.getIntermediaryId();
@@ -157,10 +178,10 @@ public class Repository {
         OnCompleteListener<Void> chamberAddCompleteListener = task -> {
             if (task.isSuccessful()) {
                 Timber.d("chamber member add successfull:%s", chamberMember);
-                addChamberMember.postValue(new DataOrError<>(true, null));
+                addChamberMemberLD.postValue(new DataOrError<>(true, null));
             } else {
                 Timber.d("chamber member add failed:%s", chamberMember);
-                addChamberMember.postValue(new DataOrError<>(false, task.getException()));
+                addChamberMemberLD.postValue(new DataOrError<>(false, task.getException()));
             }
         };
 
@@ -191,7 +212,7 @@ public class Repository {
                     firebaseDatabase.getReference(PublicVariables.CHAMBER_KEY).child(Long.toString(chamberMember.getTimestamp())).setValue(chamberMember)
                             .addOnCompleteListener(chamberAddCompleteListener);
                 });
-        return addChamberMember;
+        return addChamberMemberLD;
     }
 
     private void deleteTimeStamp(String key) {
@@ -245,5 +266,38 @@ public class Repository {
             allChamberMembersLD = new FirebaseRealtimeListLiveData<>(firebaseDatabase.getReference(PublicVariables.CHAMBER_KEY), ChamberMember.class);
         }
         return allChamberMembersLD;
+    }
+
+    public void setNewTokenOnChamberIfExists(String uId, String newToken) {
+        firebaseDatabase.getReference(PublicVariables.CHAMBER_KEY).get().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                for (DataSnapshot snap : task.getResult().getChildren()) {
+                    try {
+                        ChamberMember chamMem = snap.getValue(ChamberMember.class);
+                        if (chamMem != null && chamMem.getIntermediaryId().equals(uId)) {
+                            String timestamp = Long.toString(chamMem.getTimestamp());
+                            chamMem.setCallDeviceToken(newToken);
+                            firebaseDatabase.getReference(PublicVariables.CHAMBER_KEY).child(timestamp).setValue(chamMem).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if (task.isSuccessful()) {
+                                        Timber.v("Added new token on uid:%s", uId);
+                                    } else {
+                                        Timber.w(task.getException(), "tried to update token but shit happened");
+                                    }
+                                }
+                            });
+                            return;
+                        }
+                    } catch (Exception e) {
+                        if ((e instanceof DatabaseException) != false) {
+                            Timber.w("Cannot convert:key:%s", snap.getKey());
+                        } else {
+                            Timber.e(e);
+                        }
+                    }
+                }
+            }
+        });
     }
 }

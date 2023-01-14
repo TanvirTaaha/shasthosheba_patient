@@ -15,7 +15,8 @@ public class PreferenceManager {
         INTERMEDIARY("intermediary"),
         CONNECTED("is_connected"),
 
-        SERVER_TIMESTAMP_OF_CHAMBER("server_timestamp_of_chamber"),;
+        SERVER_TIMESTAMP_OF_CHAMBER("server_timestamp_of_chamber"),
+        CHAMBER_RUNNING("chamber_is_running");
 
         private final String key;
 
@@ -59,5 +60,13 @@ public class PreferenceManager {
 
     public boolean isConnected() {
         return preferences.getBoolean(PreferenceKey.CONNECTED.key, false);
+    }
+
+    public void setChamberRunning(boolean isRunning) {
+        preferences.edit().putBoolean(PreferenceKey.CHAMBER_RUNNING.key, isRunning).apply();
+    }
+
+    public boolean isChamberRunning() {
+        return preferences.getBoolean(PreferenceKey.CHAMBER_RUNNING.key, false);
     }
 }

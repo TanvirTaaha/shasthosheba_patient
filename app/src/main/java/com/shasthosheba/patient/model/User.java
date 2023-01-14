@@ -2,7 +2,7 @@ package com.shasthosheba.patient.model;
 
 import java.io.Serializable;
 
-public class User implements Serializable {
+public class User extends BaseModel implements Serializable {
     private String name;
     private String status;
     private String uId;

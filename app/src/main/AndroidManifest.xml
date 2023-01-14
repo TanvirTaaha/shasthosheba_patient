@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.shasthosheba.patient">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -28,17 +27,39 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Patient"
         tools:targetApi="31">
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@android:drawable/sym_action_call" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/call_notification_channel" />
+        <service
+            android:name=".ui.chamber.FCMService"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         <service
             android:name=".ui.chamber.ChamberWaitingService"
             android:enabled="true"
             android:exported="true" />
-
+        <activity
+            android:name=".ui.chamber.JitsiMeetCustomActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.chamber.ChamberActivityIntermediary"
-            android:parentActivityName=".ui.MainActivity"
+            android:exported="false"
             android:label="@string/chamber"
-            android:theme="@style/Theme.Patient"
-            android:exported="false" />
+            android:parentActivityName=".ui.MainActivity"
+            android:theme="@style/Theme.Patient" />
         <activity
             android:name=".ui.patient.PrescriptionViewActivity"
             android:exported="false"

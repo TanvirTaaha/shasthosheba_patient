@@ -10,6 +10,7 @@ public enum IntentTags {
     ACTION_ACCEPT_CALL("Jitsi_call_accept"),
     ACTION_REJECT_CALL("Jitsi_call_reject"),
     ACTION_LEAVE_CHAMBER("leave_chamber_notification_action"),
+    FCM_CALL_OBJ("call"),
     ;
     public final String tag;
 

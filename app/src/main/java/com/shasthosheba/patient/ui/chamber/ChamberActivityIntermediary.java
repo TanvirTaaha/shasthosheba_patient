@@ -1,10 +1,14 @@
 package com.shasthosheba.patient.ui.chamber;
 
+import android.Manifest;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.LayoutInflater;
@@ -12,7 +16,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
@@ -25,6 +32,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.database.DatabaseException;
 import com.shasthosheba.patient.R;
 import com.shasthosheba.patient.app.App;
@@ -57,11 +65,15 @@ public class ChamberActivityIntermediary extends AppCompatActivity
 
         mViewModel = new ViewModelProvider(this).get(ChamberViewModel.class);
         mViewModel.getAllChamberMembers().observe(this, dataOrError -> {
+            int dataSize = 0;
             if (dataOrError.data != null) {
                 mAdapter.submitList(dataOrError.data);
+                dataSize = dataOrError.data.size();
+                Timber.d("dataOrError.data:%s", dataOrError.data);
             }
             Timber.e(dataOrError.error);
-            if (binding.rcvChamberMemberList.getChildCount() == 0 && mAdapter.getItemCount() == 0) {
+            if (mAdapter.getItemCount() == 0 && dataSize == 0) {
+                Timber.d("mAdapter.getCurrentList: %s", mAdapter.getCurrentList());
                 binding.rcvChamberMemberList.setVisibility(View.GONE);
                 binding.llEmpty.setVisibility(View.VISIBLE);
             } else {
@@ -94,10 +106,12 @@ public class ChamberActivityIntermediary extends AppCompatActivity
             // instead send send broadcast
             Intent leaveChamberBroadcastIntent = new Intent(getApplicationContext(), BroadcastReceiver.class)
                     .setAction(IntentTags.ACTION_LEAVE_CHAMBER.tag)
-                    .putExtra(IntentTags.USER_ID.tag, mViewModel.uId);
+                    .putExtra(IntentTags.USER_ID.tag, mViewModel.uId)
+                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             sendBroadcast(leaveChamberBroadcastIntent);
         });
     }
+
 
     @Override
     protected void onStart() {

@@ -1,6 +1,11 @@
 package com.shasthosheba.patient.ui;
 
+import android.app.PendingIntent;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
@@ -28,13 +33,17 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.gson.Gson;
 import com.shasthosheba.patient.R;
+import com.shasthosheba.patient.app.IntentTags;
 import com.shasthosheba.patient.app.PreferenceManager;
 import com.shasthosheba.patient.app.PublicVariables;
 import com.shasthosheba.patient.databinding.ActivityStartBinding;
+import com.shasthosheba.patient.model.Call;
 import com.shasthosheba.patient.model.Intermediary;
 import com.shasthosheba.patient.model.User;
 import com.shasthosheba.patient.repo.Repository;
+import com.shasthosheba.patient.ui.chamber.FCMService;
 import com.shasthosheba.patient.util.Utils;
 
 import org.jitsi.meet.sdk.JitsiMeet;
@@ -56,26 +65,6 @@ public class StartActivity extends AppCompatActivity {
 
     private User mUser;
     private PreferenceManager preferenceManager;
-
-    private void onSignInResult(FirebaseAuthUIAuthenticationResult result) {
-        IdpResponse response = result.getIdpResponse();
-        if (result.getResultCode() == RESULT_OK) {
-            //Successfully signed in
-            FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-            if (firebaseUser != null) {
-                showConnectedProgress(true);
-                preferenceManager.setUser(new User(firebaseUser.getUid(), firebaseUser.getDisplayName(), "online"));
-            }
-            Timber.d("calling handleAfterSignIn from signInResult");
-            Timber.d("Logged in");
-            handleAfterSignIn();
-        } else {
-            if (response != null) {
-                Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show();
-                Timber.d(response.getError());
-            }
-        }
-    }
 
     private FirebaseDatabase rtDB = FirebaseDatabase.getInstance(PublicVariables.FIREBASE_DB);
     private DatabaseReference dataRef = rtDB.getReference(PublicVariables.INTERMEDIARY_KEY);
@@ -137,7 +126,44 @@ public class StartActivity extends AppCompatActivity {
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
+        if (getIntent().getExtras() != null) {
+            Timber.d("call:%s", getIntent().getStringExtra(IntentTags.FCM_CALL_OBJ.tag));
+            Call call = new Gson().fromJson(getIntent().getStringExtra(IntentTags.FCM_CALL_OBJ.tag), Call.class);
+            Intent callAcceptBroadcastIntent = new Intent(getApplicationContext(), BroadcastReceiver.class)
+                    .setAction(IntentTags.ACTION_ACCEPT_CALL.tag)
+                    .putExtra(IntentTags.CALL_OBJ.tag, getIntent().getStringExtra(IntentTags.FCM_CALL_OBJ.tag));
+            PendingIntent callAcceptPendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, callAcceptBroadcastIntent, PendingIntent.FLAG_IMMUTABLE);
+            Uri defaultRingtoneUri = RingtoneManager.getActualDefaultRingtoneUri(getApplicationContext(), RingtoneManager.TYPE_RINGTONE);
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext(), PublicVariables.CALL_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle(call.isVideo() ? "Video call" : "Audio call")
+                    .setContentText("Call from " + call.getDoctor())
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setSound(defaultRingtoneUri, AudioManager.STREAM_RING)
+                    .addAction(android.R.drawable.sym_action_call, "Accept", callAcceptPendingIntent)
+                    .setOngoing(true);
+            NotificationManagerCompat.from(this).notify(PublicVariables.CALL_NOTIFICATION_ID, notificationBuilder.build());
+        }
+    }
 
+    private void onSignInResult(FirebaseAuthUIAuthenticationResult result) {
+        IdpResponse response = result.getIdpResponse();
+        if (result.getResultCode() == RESULT_OK) {
+            //Successfully signed in
+            FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (firebaseUser != null) {
+                showConnectedProgress(true);
+                preferenceManager.setUser(new User(firebaseUser.getUid(), firebaseUser.getDisplayName(), "online"));
+            }
+            Timber.d("calling handleAfterSignIn from signInResult");
+            Timber.d("Logged in");
+            handleAfterSignIn();
+        } else {
+            if (response != null) {
+                Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show();
+                Timber.d(response.getError());
+            }
+        }
     }
 
     private boolean isLoggedIn() {
@@ -168,50 +194,47 @@ public class StartActivity extends AppCompatActivity {
             return;
         }
         showConnectedProgress(Repository.getInstance().isConnected());
-        Repository.getInstance().getNetStatus().observe(StartActivity.this, new Observer<Boolean>() {
-            @Override
-            public void onChanged(Boolean netAvailable) {
-                Timber.d("In ConMan network callbacks:netAvailable:%s", netAvailable);
-                if (netAvailable) {
-                    Timber.d("Got connection, checking for data, setting if not already exists and loading otherwise");
-                    showConnectedProgress(true);
-                    dataRef.child(firebaseUser.getUid()).setValue(mUser)
-                            .addOnSuccessListener(unused -> {
-                                Timber.d("Intermediary status set");
-                            })
-                            .addOnFailureListener(Timber::e);
-                    FirebaseFirestore firestore = FirebaseFirestore.getInstance();
-                    firestore.collection(PublicVariables.INTERMEDIARY_KEY).document(mUser.getuId()).get()
-                            .addOnSuccessListener(documentSnapshot -> {
-                                Timber.d("dddddddddddd");
-                                if (documentSnapshot != null && documentSnapshot.exists()) {
-                                    Timber.d("checking for existence of intermediary:%s", documentSnapshot.getData());
-                                    preferenceManager.setIntermediary(documentSnapshot.toObject(Intermediary.class));
-                                    Timber.d("checking whether intermediary at pref_Man is null:%s", preferenceManager.getIntermediary());
-                                    startActivity(new Intent(StartActivity.this, MainActivity.class));
-                                    finish();
-                                } else {
-                                    //No data found
-                                    Timber.d("No data found");
-                                    Timber.d("[should be null as no data found]checking for existence of intermediary:%s", documentSnapshot.getData());
-                                    Intermediary intermediary = new Intermediary();
-                                    intermediary.setId(mUser.getuId());
-                                    intermediary.setName(mUser.getName());
-                                    intermediary.setPatients(new ArrayList<>());
-                                    firestore.collection(PublicVariables.INTERMEDIARY_KEY).document(mUser.getuId()).set(intermediary)
-                                            .addOnSuccessListener(unused -> {
-                                                Timber.d("Added new data:%s", intermediary);
-                                                preferenceManager.setIntermediary(intermediary);
-                                                startActivity(new Intent(StartActivity.this, MainActivity.class));
-                                                finish();
-                                            }).addOnFailureListener(Timber::e);
-                                }
-                                Timber.d("Document:%s", documentSnapshot.getData());
-                            })
-                            .addOnFailureListener(Timber::e);
-                } else {
-                    showConnectedProgress(false);
-                }
+        Repository.getInstance().getNetStatus().observe(StartActivity.this, netAvailable -> {
+            Timber.d("In ConMan network callbacks:netAvailable:%s", netAvailable);
+            if (netAvailable) {
+                Timber.d("Got connection, checking for data, setting if not already exists and loading otherwise");
+                showConnectedProgress(true);
+                dataRef.child(firebaseUser.getUid()).setValue(mUser)
+                        .addOnSuccessListener(unused -> {
+                            Timber.d("Intermediary status set");
+                        })
+                        .addOnFailureListener(Timber::e);
+                FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+                firestore.collection(PublicVariables.INTERMEDIARY_KEY).document(mUser.getuId()).get()
+                        .addOnSuccessListener(documentSnapshot -> {
+                            Timber.d("dddddddddddd");
+                            if (documentSnapshot != null && documentSnapshot.exists()) {
+                                Timber.d("checking for existence of intermediary:%s", documentSnapshot.getData());
+                                preferenceManager.setIntermediary(documentSnapshot.toObject(Intermediary.class));
+                                Timber.d("checking whether intermediary at pref_Man is null:%s", preferenceManager.getIntermediary());
+                                startActivity(new Intent(StartActivity.this, MainActivity.class));
+                                finish();
+                            } else {
+                                //No data found
+                                Timber.d("No data found");
+                                Timber.d("[should be null as no data found]checking for existence of intermediary:%s", documentSnapshot.getData());
+                                Intermediary intermediary = new Intermediary();
+                                intermediary.setId(mUser.getuId());
+                                intermediary.setName(mUser.getName());
+                                intermediary.setPatients(new ArrayList<>());
+                                firestore.collection(PublicVariables.INTERMEDIARY_KEY).document(mUser.getuId()).set(intermediary)
+                                        .addOnSuccessListener(unused -> {
+                                            Timber.d("Added new data:%s", intermediary);
+                                            preferenceManager.setIntermediary(intermediary);
+                                            startActivity(new Intent(StartActivity.this, MainActivity.class));
+                                            finish();
+                                        }).addOnFailureListener(Timber::e);
+                            }
+                            Timber.d("Document:%s", documentSnapshot.getData());
+                        })
+                        .addOnFailureListener(Timber::e);
+            } else {
+                showConnectedProgress(false);
             }
         });
     }
@@ -242,9 +265,15 @@ public class StartActivity extends AppCompatActivity {
         Timber.v("Creating notification channel");
         CharSequence name = "Call";
         String description = "Audio and video call";
+        Uri defaultRingtoneUri = RingtoneManager.getActualDefaultRingtoneUri(getApplicationContext(), RingtoneManager.TYPE_RINGTONE);
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .build();
         NotificationChannelCompat channel = new NotificationChannelCompat.Builder(PublicVariables.CALL_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_MAX)
                 .setName(name)
                 .setDescription(description)
+                .setSound(defaultRingtoneUri, audioAttributes)
                 .build();
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(StartActivity.this);
         notificationManager.createNotificationChannel(channel);
